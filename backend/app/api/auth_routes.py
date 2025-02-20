@@ -32,7 +32,7 @@ def login():
 
   user = User.query.filter_by(email=data["email"]).first()
   if user and user.check_password(data["password"]):
-    access_token = create_access_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id))
     return jsonify({"token": access_token, "message": "Login successful!"}), 200
   
   return jsonify({"error": "Invalid email or password"}), 401
