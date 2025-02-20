@@ -16,7 +16,12 @@ def create_app():
   db.init_app(app)
   migrate.init_app(app, db)
 
-  # Register API routes
+  # Imports models **AFTER** db is initialized
   from app import models
+
+  # Register custom commands
+  from app.cli import seed, reset_db
+  app.cli.add_command(seed) # Register command
+  app.cli.add_command(reset_db)
   
   return app # Returns the Flask app
