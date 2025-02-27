@@ -31,6 +31,8 @@ def login():
   data = request.get_json()
 
   user = User.query.filter_by(email=data["email"]).first()
+
+  # Conver JWT toke to str
   if user and user.check_password(data["password"]):
     access_token = create_access_token(identity=str(user.id))
     return jsonify({"token": access_token, "message": "Login successful!"}), 200

@@ -12,6 +12,8 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    xp = db.Column(db.Integer, default=0)
+    level = db.Column(db.Integer, default=1)
 
     # リレーションシップ
     tasks = db.relationship('Task', back_populates='user', cascade='all, delete')
@@ -30,6 +32,8 @@ class User(db.Model):
             'email': self.email,
             'is_admin': self.is_admin,
             'created_at': self.created_at.isoformat(),
+            'xp': self.xp,
+            'level': self.level,
             'task': [task.name for task in self.tasks]
         }
 
