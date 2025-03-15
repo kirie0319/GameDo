@@ -14,9 +14,11 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     xp = db.Column(db.Integer, default=0)
     level = db.Column(db.Integer, default=1)
+    gold = db.Column(db.Integer, default=0)
+    hp = db.Column(db.Integer, default=100)
 
     # リレーションシップ
-    tasks = db.relationship('Task', back_populates='user', cascade='all, delete')
+    tasks = db.relationship('Task', back_populates='user', cascade='all, delete', passive_deletes=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -34,6 +36,8 @@ class User(db.Model):
             'created_at': self.created_at.isoformat(),
             'xp': self.xp,
             'level': self.level,
+            'gold': self.gold,
+            'hp': self.hp,
             'task': [task.name for task in self.tasks]
         }
 
