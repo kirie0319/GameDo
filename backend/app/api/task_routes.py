@@ -2,9 +2,11 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models.user import User
-from app.services.xp_service import add_xp
-from app import db
 from app.models.tasks import Task
+from app.services.xp_service import add_xp, calculate_xp, update_streak, apply_hp_penalty
+from app.services.task_service import reset_daily_tasks
+from app import db
+from datetime import datetime, timedelta
 
 task_bp = Blueprint("task_bp", __name__)
 
@@ -68,15 +70,42 @@ def create_task():
   # Debugging print
   print("Received data:", data, type(data))
 
+  # Ensure required fields exist
   if not data or "name" not in data or not isinstance(data["name"], str):
     return jsonify({"error": "Task name is required and must be a string"}), 400
   
   current_user_id = get_jwt_identity()
 
-  new_task = Task(name=data["name"], user_id=current_user_id)
+  # Validate diffilucty & type (Ensure they are valid ENUM values)
+  difficulty = data.get("difficulty", "easy") # Default to "easy" if not provided
+  type_ = data.get("type", "todo") # Default to "todo" if not provided
+
+  valid_difficulties = {"easy", "medium", "hard"}
+  valid_types = {"todo", "habit", "daily"}
+
+  if difficulty not in valid_difficulties:
+    return jsonify({"error": f"Invalid difficulty. Must be one of {valid_difficulties}"}), 400
+
+  if type_ not in valid_types:
+    return jsonify({"error": f"Invalid task type. Must be one of {valid_types}"}), 400
+  # Create Task
+  new_task = Task(
+    name=data["name"], 
+    user_id=current_user_id,
+    difficulty=difficulty,
+    type=type_
+  )
   db.session.add(new_task)
   db.session.commit()
-  return jsonify({"message": "Task created!", "task": {"id": new_task.id, "name": new_task.name}}), 201
+  return jsonify({
+    "message": "Task created!",
+    "task": {
+      "id": new_task.id, 
+      "name": new_task.name,
+      "difficulty": new_task.difficulty,
+      "type": new_task.type
+    }
+  }), 201
 
 # Update task status (Only if User Owns It)
 @task_bp.route("/status/<int:task_id>", methods=["PATCH"])
@@ -111,20 +140,40 @@ def complete_task(task_id):
     
   # Mark task as completed
   task.completed = True
-  db.session.commit() # Save task completion
+  update_streak(task)  # Apply streak bonuses
+  task.completed_at = datetime.utcnow()
   print("success mark task as completed")
   # Award XP to the user
   user = User.query.get(current_user_id)
   if not user:
     return jsonify({"error": "User not found"}), 404
 
-  xp_amount = 10 # Default XP for now (later use AI to determine)
+  xp_amount = calculate_xp(task.difficulty, task.streak_count) # Default XP for now (later use AI to determine)
   add_xp(user, xp_amount) # Award XP and check for level-up
+
+  db.session.commit()
 
   return jsonify({
     "message": "Task completed!",
     "task": {"id": task.id, "name": task.name, "completed": task.completed},
     "xp_awarded": xp_amount,
     "new_xp": user.xp,
-    "new_level": user.level
+    "new_level": user.level,
+    "gold": user.gold,
+    "hp": user.hp,
+    "streak_count": task.streak_count
   }), 200
+
+# Apply HP Penalties (Daily Job)
+@task_bp.route("/apply_penalties", methods=["POST"])
+def apply_penalties():
+  """Apply HP loss for missed daily tasks"""
+  apply_hp_penalty()
+  return jsonify({"message": "HP penalties applied"}), 200
+
+# Reset Daily Tasks (Daily Job)
+@task_bp.route("/reset_dailies", methods=["POST"])
+def reset_dailies():
+  """Reset all daily tasks"""
+  reset_daily_tasks()
+  return jsonify({"message": "Daily tasks reset"}), 200

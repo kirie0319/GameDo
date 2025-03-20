@@ -4,8 +4,8 @@ from app import db
 import sqlalchemy as sa 
 
 # Enum 定義(SQLAlchemy　用)
-task_difficulty_enum = sa.Enum("easy", "medium", "hard", name="task_difficulty", create_type=False)
-task_type_enum = sa.Enum("todo", "habit", "daily", name="task_type", create_type=False)
+task_difficulty_enum = sa.Enum("easy", "medium", "hard", name="task_difficulty", create_type=True, native_enum=True)
+task_type_enum = sa.Enum("todo", "habit", "daily", name="task_type", create_type=True, native_enum=True)
 
 class Task(db.Model):
     __tablename__ = 'tasks'
@@ -17,6 +17,10 @@ class Task(db.Model):
     difficulty = db.Column(task_difficulty_enum, nullable=False)
     type = db.Column(task_type_enum, nullable=False)
     completed_at = db.Column(db.DateTime, nullable=True)
+
+    # Streak tracking 
+    streak_count = db.Column(db.Integer, default=0)
+    last_completed_at = db.Column(db.DateTime, nullable=True)
 
     # リレーションシップ
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete="CASCADE"), nullable=False)

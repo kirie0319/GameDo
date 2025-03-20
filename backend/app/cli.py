@@ -19,7 +19,10 @@ def seed(users, tasks):
   # 1️⃣ Create Users
   user_list = []
   for _ in range(users):
-    user = User(username=fake.user_name(), email=fake.email())
+    user = User(
+      username=fake.unique.user_name(), 
+      email=fake.unique.email()
+      )
     user.set_password(fake.password())
     db.session.add(user)
     user_list.append(user)
@@ -30,7 +33,9 @@ def seed(users, tasks):
   # 2️⃣ Create Tasks
   for _ in range(tasks):
     user = fake.random.choice(user_list)  # Randomly assign task to a user
-    task = Task(name=fake.sentence(nb_words=4), user_id=user.id, completed=fake.boolean())
+    task = Task(
+      name=fake.sentence(nb_words=4), user_id=user.id, completed=fake.boolean(), difficulty=fake.random_element(elements=["easy", "medium", "hard"]), type=fake.ramdom_element(elements=["todo", "habit", "daily"]),
+    )
     db.session.add(task)
 
   db.session.commit()
